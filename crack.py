@@ -6,19 +6,21 @@ from cracker import *
 import multiprocessing
 import atexit
 import re
+import os
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='MD5 CRACKING')
-    parser.add_argument('-m', '--md5', dest='hash', required=False, help='MD5 hash file path')
-    parser.add_argument('-d', '--dico', dest="dico", required=False, help="Dictionary file path")
+    parser = argparse.ArgumentParser(description='Md5 cracking tools')
+    parser.add_argument('-m', '--md5', dest='hash_file', required=False, help='MD5 hash file pathman')
+    parser.add_argument('-d', '--dico', dest="dict_file", required=False, help="Dictionary file path")
     parser.add_argument('-l', '--length', dest='length', required=False, help='Brute force cracking', type=int)
-    parser.add_argument('-g', '--gen', dest='gen', required=False, help='Generate MD5 password')
-    parser.add_argument('-n', '--net', dest='net', required=False, help='Online cracking')
-    parser.add_argument('--proc', dest='proc', help='Multiprocessing cracking')
+    parser.add_argument('-g', '--gen', dest='plaintext_file', required=False, help='Generate MD5 password')
+    parser.add_argument('-n', '--net', dest='hash_string', required=False, help='Online cracking')
+    parser.add_argument('--proc', dest='multi_proc', help='Multiprocessing cracking')
     parser.add_argument('--pattern', dest='pattern', required=False, help='Pattern cracking')
     parser.add_argument('-f', '--file', dest='file', required=False, help='Apply operation to the file')
-    parser.add_argument('-p', '--protect', dest='protect', required=False, help='Protect pdf with password')
-    parser.add_argument('-c', '--clearprotect', dest='clearprotect', required=False, help='Decrypt pdf with password')
+    parser.add_argument('-p', '--protect', dest='pdf_file', required=False, help='Protect pdf with password')
+    parser.add_argument('-c', '--clearprotect', dest='pdf_protected_file', required=False, help='Decrypt pdf with password')
+    parser.add_argument('-a', '--all', dest="all_in_one", required=False, help="Launch all methods cracking")
     args = parser.parse_args()
 
     # os.chdir('/home/antony/Hack/Dico')
@@ -68,36 +70,23 @@ if __name__ == '__main__':
         ps2.start()
         print("Processes 2 starting")
 
-        attempt = 0
-        # while True:
-        #     cracking = done_queue.get()
-        #     if cracking == 'Successful':
-        #         ps1.kill()
-        #         ps2.kill()
-        #         break
-        #     elif cracking == 'Failed':
-        #         attempt += 1
-        #         if attempt == len(processes):
-        #             print('Multiprocessing failed!!!')
-        #             break
-
-    work_queue = multiprocessing.Queue()
-    done_queue = multiprocessing.Queue()
-
-    if args.dico and not args.length:
-        if args.proc:
-            pcrack_dict(args.hash, args.dico)
+    if args.all_in_one:
+        Cracker.crack_allinone(args.hash_file, args.dict_file, args.pattern, args.length)
+    elif args.dict_file and not args.length:
+        if args.multi_proc:
+            pcrack_dict(args.hash_file, args.dict_file)
         else:
-            Cracker.crack_dict(args.hash, args.dico, False)
-    elif args.length and not args.dico:
-        Cracker.crack_brute(args.hash, args.length)
-    elif args.gen:
-        Cracker.gen_md5(args.gen)
-    elif args.net:
-        Cracker.crack_online(args.net)
+            Cracker.crack_dict(args.hash_file, args.dict_file, False)
+    elif args.length and not args.dict_file:
+        Cracker.crack_brute(args.hash_file, args.length)
+    elif args.plaintext_file:
+        Cracker.gen_md5(args.plaintext_file)
+    elif args.hash_string:
+        Cracker.crack_online(args.hash_string)
     elif args.pattern:
-        Cracker.crack_pattern(args.hash, args.pattern)
-    elif args.protect:
-        Cracker.protect_file(args.protect)
-    elif args.clearprotect:
-        Cracker.decrypt_file(args.clearprotect)
+        Cracker.crack_pattern(args.hash_file, args.pattern)
+    elif args.pdf_file:
+        Cracker.protect_file(args.pdf_file)
+    elif args.pdf_protected_file:
+        Cracker.decrypt_file(args.pdf_protected_file)
+

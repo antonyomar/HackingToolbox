@@ -1,8 +1,12 @@
 import hashlib
 import sys
+import os
 import time
 import string
 import urllib.request, urllib.response, urllib.error
+
+from PyPDF2.errors import PdfReadError
+
 from utils import *
 import getpass
 import PyPDF2
@@ -34,7 +38,7 @@ class Cracker:
         :return: cracking result
         """
         success = False
-
+        print('DICTIONARY CRACKING: ')
         try:
             dict = open(dico, 'rb')
             hashmd5 = Cracker.open_hash(md5)
@@ -48,13 +52,16 @@ class Cracker:
                 mdpmd5 = hashlib.md5(mdp).hexdigest()
 
                 if hashmd5 == mdpmd5:
-                    print(Color.GREEN + "PASSWORD FOUND : " + mdp.decode('utf-8') + '\r (' + mdpmd5 + ')' + Color.END)
+                    print(Color.GREEN + "[+] Password found : " + mdp.decode('utf-8') + '\r (' + mdpmd5 + ')' + Color.END)
                     success = True
+                    sys.exit(0)
+
             if not success:
-                print(Color.RED + 'PASSWORD NOT FOUND :(' + Color.END)
+                print('[-] Password not found :(')
+
 
         except FileNotFoundError:
-            print('Error: File not found!')
+            print(Color.RED + '[!] Error: File not found!' + Color.END)
 
     @staticmethod
     def crack_brute(md5, length, currentpass=[]):
@@ -67,7 +74,6 @@ class Cracker:
         # caracts = string.printable
         # caracts = string.ascii_letters
         caracts = string.digits
-
         hashmd5 = Cracker.open_hash(md5)
 
         if length >= 1:
@@ -77,31 +83,40 @@ class Cracker:
             else:
                 for c in caracts:
                     currentpass[length - 1] = c
-                    currentmd5 = hashlib.md5(("".join(currentpass)+'\n').encode('utf8')).hexdigest()
-                    print(currentmd5)
+                    currentmd5 = hashlib.md5(("".join(currentpass) + '\n').encode('utf8')).hexdigest()
+
+                    print('BRUTE FORCE CRACKING: ')
                     print('Cracking password: ' + "".join(currentpass))
+                    os.system('cls' if os.name == 'nt' else "printf '\033c'")
                     if hashmd5 == currentmd5:
-                        print(Color.GREEN + "PASSWORD FOUND : " + "".join(
+                        print('BRUTE FORCE CRACKING: ')
+                        print(Color.GREEN + "[+] Password found: " + "".join(
                             currentpass) + ' (' + hashmd5 + ')' + Color.END)
-                        sys.exit(1)
+                        sys.exit(0)
+
                     else:
                         Cracker.crack_brute(md5, length - 1, currentpass)
 
+
     @staticmethod
-    def crack_online(md5):
+    def crack_online(hashmd5):
+        print('ONLINE CRACKING: ')
         try:
             useragent = "Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0"
-            headers = {'USER-AGENT': useragent}
-            url = 'https://www.google.com/search?hl=fr&q=' + md5
+            headers = {"USER-AGENT": useragent}
+            url = 'https://www.google.com/search?hl=fr&q=' + hashmd5
             request = urllib.request.Request(url, None, headers)
             response = urllib.request.urlopen(request).read()
-            if 'not found' not in str(response):
-                print('RESULT FOUND AT ' + url)
+            if ('not found' and 'Aucun document ne correspond aux termes de recherche') not in str(response):
+                print(Color.GREEN + '[+] Result found at: ' + url + Color.END)
+                sys.exit(0)
+            else:
+                print('[-] Result not found :(')
 
         except urllib.error.HTTPError as e:
-            print(Color.RED + 'HTTP ERROR : ' + str(e.code) + Color.END)
+            print(Color.RED + '[!] HTTP ERROR : ' + str(e.code) + Color.END)
         except urllib.error.URLError as e:
-            print(Color.RED + 'URL ERROR : ' + str(e.reason) + Color.END)
+            print(Color.RED + '[!] URL ERROR : ' + str(e.reason) + Color.END)
 
     @staticmethod
     def gen_md5(path):
@@ -113,10 +128,10 @@ class Cracker:
         while len(buf) > 0:
             hasher.update(buf)
             buf = file.read(BLOCKSIZE)
-        hashmd5 = open('hashmd5.txt', 'w')
+        hashmd5 = open('res/hashmd5.txt', 'w')
         hashmd5.write(hasher.hexdigest())
         hashmd5.close()
-        print("GENERATED HASH: " + hasher.hexdigest())
+        print("[+] Generated hash: " + hasher.hexdigest())
         print("Saved at : hashmd5.txt")
         sys.exit(0)
 
@@ -127,59 +142,93 @@ class Cracker:
         num = string.digits
 
         hashmd5 = Cracker.open_hash(md5)
+        currpass = pattern
+
+        os.system('cls' if os.name == 'nt' else "printf '\033c'")
+        print('PATTERN CRACKING: ')
+        print('Cracking password: ' + currpass)
         if index < len(pattern):
-            if pattern[index] in maj + min + num:
-                Cracker.crack_pattern(md5, pattern, index + 1)
-            else:
-                if pattern[index] == '+':
-                    for letter in maj:
-                        currpass = pattern.replace('+', letter, 1)
-                        if hashmd5 == hashlib.md5(currpass.encode('utf8')).hexdigest():
-                            print(Color.GREEN + 'PASSWORD FOUND :) ' + currpass + ' (' + hashmd5 + ')' + Color.END)
-                            sys.exit(0)
-                        Cracker.crack_pattern(md5, currpass, index + 1)
-                if pattern[index] == '#':
-                    for letter in min:
-                        currpass = pattern.replace('#', letter, 1)
-                        if hashmd5 == hashlib.md5(currpass.encode('utf8')).hexdigest():
-                            print(Color.GREEN + 'PASSWORD FOUND :) ' + currpass + ' (' + hashmd5 + ')' + Color.END)
-                            sys.exit(0)
-                        Cracker.crack_pattern(md5, currpass, index + 1)
-                if pattern[index] == '$':
-                    for letter in num:
-                        currpass = pattern.replace('$', letter, 1)
-                        if hashmd5 == hashlib.md5(currpass.encode('utf8')).hexdigest():
-                            print(Color.GREEN + 'PASSWORD FOUND :) ' + currpass + ' (' + hashmd5 + ')' + Color.END)
-                            sys.exit(0)
-                        Cracker.crack_pattern(md5, currpass, index + 1)
+            if pattern[index] == '+':
+                for letter in maj:
+                    currpass = pattern.replace('+', letter, 1)
+                    if hashmd5 == hashlib.md5(currpass.join('\n').encode('utf8')).hexdigest():
+                        os.system('cls' if os.name == 'nt' else "printf '\033c'")
+                        print('PATTERN CRACKING: ')
+                        print(Color.GREEN + '[+] Password found : ' + currpass + ' (' + hashmd5 + ')' + Color.END)
+                        sys.exit(0)
+                    Cracker.crack_pattern(md5, currpass, index + 1)
+            if pattern[index] == '#':
+                for letter in min:
+                    currpass = pattern.replace('#', letter, 1)
+                    if hashmd5 == hashlib.md5(currpass.join('\n').encode('utf8')).hexdigest():
+                        os.system('cls' if os.name == 'nt' else "printf '\033c'")
+                        print('PATTERN CRACKING: ')
+                        print(Color.GREEN + '[+] Password found : ' + currpass + ' (' + hashmd5 + ')' + Color.END)
+                        sys.exit(0)
+                    Cracker.crack_pattern(md5, currpass, index + 1)
+            if pattern[index] == '@':
+                for letter in num:
+                    currpass = pattern.replace('@', letter, 1)
+                    if hashmd5 == hashlib.md5((currpass + '\n').encode('utf8')).hexdigest():
+                        os.system('cls' if os.name == 'nt' else "printf '\033c'")
+                        print('PATTERN CRACKING: ')
+                        print(Color.GREEN + '[+] Password found : ' + currpass + ' (' + hashmd5 + ')' + Color.END)
+                        sys.exit(0)
+
+                    Cracker.crack_pattern(md5, currpass, index + 1)
+
+
+    @staticmethod
+    def crack_allinone(md5, dico, pattern, length):
+        hashmd5 = Cracker.open_hash(md5)
+        Cracker.crack_dict(md5, dico, False)
+        Cracker.crack_pattern(md5, pattern)
+        Cracker.crack_brute(md5, length)
+        Cracker.crack_online(hashmd5)
 
     @staticmethod
     def protect_file(path):
+        print('PDF ENCRYPTION:')
         file = open(path, 'rb')
         pdfWriter = PyPDF2.PdfFileWriter()
-
         pdfReader = PyPDF2.PdfFileReader(path)
-        for page_num in range(pdfReader.numPages):
-            pdfWriter.addPage(pdfReader.getPage(page_num))
+        try:
+            for page_num in range(pdfReader.numPages):
+                pdfWriter.addPage(pdfReader.getPage(page_num))
+
+        except PdfReadError as e:
+            print('[-] Sorry, document seems to be already encrypted!')
+            sys.exit(1)
         passwd = getpass.getpass(prompt='Enter password: ')
         pdfWriter.encrypt(passwd)
-        with open(path, 'wb') as pdf:
+        filename = path.split('.')[0]
+        cpath = filename + "_crypted.pdf"
+
+        with open(cpath, 'wb') as pdf:
             pdfWriter.write(pdf)
-        print(Color.GREEN + 'File encrypted at: ' + path)
+        print('[+] File successfully encrypted at: ' + cpath)
 
     def decrypt_file(path):
+        print('PDF DECRYPTION:')
         file = open(path, 'rb')
         pdfWriter = PyPDF2.PdfFileWriter()
         pdfReader = PyPDF2.PdfFileReader(path)
         if pdfReader.isEncrypted:
-            passwd = 'https://t.me/LiensUtiles'
+            passwd = getpass.getpass(prompt="Enter password: ")
+
             pdfReader.decrypt(passwd)
 
-            for page_num in range(pdfReader.numPages):
-                pdfWriter.addPage(pdfReader.getPage(page_num))
-            [filename, ext] = path.split('.')
-            with open(filename + '_decrypted.' + ext, 'wb') as new_file:
-                pdfWriter.write(new_file)
-            print('File successfully decrypted at: ' + path)
+            try:
+                for page_num in range(pdfReader.numPages):
+                    pdfWriter.addPage(pdfReader.getPage(page_num))
+                [filename, ext] = path.split('.')
+                dpath = filename + '_decrypted.' + ext
+                with open(dpath, 'wb') as new_file:
+                    pdfWriter.write(new_file)
+                print(Color.GREEN + '[+] File successfully decrypted at: ' + dpath + Color.END)
+
+            except PdfReadError as e:
+                print('[-] Password error, please try again...')
+                sys.exit(1)
         else:
-            print('File already decrypted!')
+            print('[-] File already decrypted!')
